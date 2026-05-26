@@ -6,10 +6,10 @@ FROM node:22-alpine AS deps
 WORKDIR /app
 
 # Copy file manifest dependensi
-COPY package.json package-lock.json ./
+COPY package.json package-lock.json* ./
 
-# Install semua deps termasuk devDependencies (dibutuhkan saat build)
-RUN npm ci
+# npm install lebih toleran dari npm ci — tidak memerlukan lock file yang sempurna
+RUN npm install
 
 
 # ============================================================
