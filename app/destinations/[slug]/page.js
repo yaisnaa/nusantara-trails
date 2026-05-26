@@ -11,18 +11,8 @@ import { notFound } from 'next/navigation'
 import { getServerSession } from 'next-auth'
 import { authOptions } from '@/lib/auth'
 import { prisma } from '@/lib/prisma'
-import dynamic from 'next/dynamic'
+import MapLoader from '@/components/MapLoader'
 import Link from 'next/link'
-
-// Import MapComponent dengan dynamic import agar tidak di-render di server (SSR: false)
-const MapComponent = dynamic(() => import('@/components/MapComponent'), {
-  ssr: false,
-  loading: () => (
-    <div className="h-[400px] bg-[#1C3A2B]/10 flex items-center justify-center text-sm text-[#1C3A2B]/50">
-      Memuat peta...
-    </div>
-  ),
-})
 
 function formatRupiah(num) {
   return new Intl.NumberFormat('id-ID', {
@@ -172,7 +162,7 @@ export default async function DestinationDetail({ params }) {
                   <h2 className="text-2xl font-serif font-bold text-deep-green mb-4">
                     Lokasi di Peta
                   </h2>
-                  <MapComponent
+                  <MapLoader
                     lat={destination.coordinates.lat}
                     lng={destination.coordinates.lng}
                     name={destination.name}
