@@ -1,0 +1,78 @@
+// Prisma schema untuk Nusantara Trails
+// Prisma 7: URL koneksi dipindahkan ke prisma.config.js (bukan di sini)
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+}
+
+model User {
+  id        Int      @id @default(autoincrement())
+  name      String
+  email     String   @unique
+  password  String
+  role      Role     @default(TURIS)
+  status    Status   @default(PENDING)
+  createdAt DateTime @default(now())
+  packages  TravelPackage[]
+  bookings  Booking[]
+}
+
+model Destination {
+  id          Int      @id @default(autoincrement())
+  slug        String   @unique
+  name        String
+  region      String
+  description String   @db.Text
+  lat         Float
+  lng         Float
+  imagePath   String?
+  packages    TravelPackage[]
+}
+
+model TravelPackage {
+  id            Int       @id @default(autoincrement())
+  title         String
+  description   String    @db.Text
+  price         Int
+  duration      String
+  imagePath     String?
+  providerId    Int
+  destinationId Int
+  createdAt     DateTime  @default(now())
+  provider      User      @relation(fields: [providerId], references: [id])
+  destination   Destination @relation(fields: [destinationId], references: [id])
+  bookings      Booking[]
+}
+
+model Booking {
+  id        Int           @id @default(autoincrement())
+  turisId   Int
+  packageId Int
+  message   String?       @db.Text
+  status    BookingStatus @default(PENDING)
+  createdAt DateTime      @default(now())
+  turis     User          @relation(fields: [turisId], references: [id])
+  package   TravelPackage @relation(fields: [packageId], references: [id])
+}
+
+enum Role {
+  SUPERADMIN
+  PENYEDIA
+  TURIS
+}
+
+enum Status {
+  PENDING
+  ACTIVE
+  REJECTED
+}
+
+enum BookingStatus {
+  PENDING
+  APPROVED
+  REJECTED
+}
