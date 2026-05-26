@@ -1,0 +1,41 @@
+# File yang tidak perlu masuk ke Docker image
+# Mengurangi ukuran build context secara signifikan
+
+# Dependencies (akan di-install ulang di dalam image)
+node_modules
+npm-debug.log*
+
+# Build output
+.next
+out
+
+# Environment files sensitif — jangan pernah masuk ke image
+.env
+.env.local
+.env*.local
+
+# Version control
+.git
+.gitignore
+
+# Editor & OS
+.vscode
+.idea
+*.swp
+*.DS_Store
+Thumbs.db
+
+# Docker files sendiri (tidak perlu di dalam image)
+Dockerfile
+docker-compose.yml
+docker-compose*.yml
+.dockerignore
+docker/
+
+# Dokumentasi
+*.md
+DOCKER.md
+
+# Test & development tools
+coverage/
+.nyc_output
