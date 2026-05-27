@@ -1,87 +1,40 @@
-# ============================================================
-# Stage 1 — deps: Install dependencies saja (di-cache terpisah)
-# ============================================================
-FROM node:22-alpine AS deps
+# Single-stage Dockerfile untuk Nusantara Trails
+# Pendekatan sederhana: semua dependency lengkap dalam satu image
+# Trade-off: image lebih besar (~1GB) tapi tidak ada masalah missing module
+
+FROM node:22-alpine
 
 WORKDIR /app
 
-# Copy file manifest dependensi
-COPY package.json package-lock.json* ./
+# Install dependency untuk native module (mariadb driver butuh ini)
+RUN apk add --no-cache python3 make g++ libc6-compat
 
-# npm install lebih toleran dari npm ci — tidak memerlukan lock file yang sempurna
+# Salin file manifest dan install semua dependency
+COPY package.json package-lock.json* ./
 RUN npm install
 
-
-# ============================================================
-# Stage 2 — builder: Build aplikasi Next.js
-# ============================================================
-FROM node:22-alpine AS builder
-
-WORKDIR /app
-
-# Salin node_modules dari stage deps
-COPY --from=deps /app/node_modules ./node_modules
-
-# Salin seluruh source code
+# Salin seluruh source code aplikasi
 COPY . .
 
-# Salin prisma schema lalu generate client (perlu ada sebelum build)
+# Generate Prisma client (wajib sebelum build)
 RUN npx prisma generate
 
-# Variabel lingkungan minimum agar next build tidak error
-# Nilai sebenarnya di-inject saat runtime via docker-compose
+# Environment placeholder untuk build — nilai sebenarnya di-inject saat runtime
 ENV NEXTAUTH_SECRET=build-placeholder
 ENV NEXTAUTH_URL=http://localhost:3000
 ENV DATABASE_URL=mysql://placeholder:placeholder@localhost:3306/placeholder
 
-# Build Next.js dengan output standalone — menghasilkan bundle mandiri
-# yang tidak membutuhkan seluruh node_modules di runtime
+# Build Next.js untuk produksi
 RUN npm run build
 
-
-# ============================================================
-# Stage 3 — runner: Image produksi yang ringan
-# ============================================================
-FROM node:22-alpine AS runner
-
-WORKDIR /app
+# Buat direktori upload yang akan menerima file foto dari penyedia
+RUN mkdir -p /www/uploads
 
 ENV NODE_ENV=production
-
-# Buat user non-root untuk keamanan
-RUN addgroup --system --gid 1001 nodejs && \
-    adduser --system --uid 1001 nextjs
-
-# Buat direktori uploads dan beri kepemilikan ke user nextjs
-RUN mkdir -p /www/uploads && chown nextjs:nodejs /www/uploads
-
-# Salin artefak build standalone dari stage builder
-COPY --from=builder /app/public ./public
-COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
-COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
-
-# Salin prisma schema + config agar migrate & seed bisa dijalankan dari container
-COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
-COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.js ./prisma.config.js
-
-# Salin paket prisma (jangan copy .bin/prisma karena Docker resolve symlinknya)
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
-COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
-
-# Buat ulang symlink .bin/prisma agar `npx prisma` berfungsi
-# Perlu USER root sementara karena chmod & symlink di direktori root container
-USER root
-RUN mkdir -p ./node_modules/.bin && \
-    ln -sf /app/node_modules/prisma/build/index.js ./node_modules/.bin/prisma && \
-    chmod +x /app/node_modules/prisma/build/index.js && \
-    chown -R nextjs:nodejs ./node_modules
-USER nextjs
-
-USER nextjs
-
-EXPOSE 3000
-
 ENV PORT=3000
 ENV HOSTNAME=0.0.0.0
 
-CMD ["node", "server.js"]
+EXPOSE 3000
+
+# Jalankan via npm start agar Next.js + Prisma client + semua dependency tersedia
+CMD ["npm", "start"]
