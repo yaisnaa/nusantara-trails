@@ -60,6 +60,23 @@ COPY --from=builder /app/public ./public
 COPY --from=builder --chown=nextjs:nodejs /app/.next/standalone ./
 COPY --from=builder --chown=nextjs:nodejs /app/.next/static ./.next/static
 
+# Salin prisma schema + config agar migrate & seed bisa dijalankan dari container
+COPY --from=builder --chown=nextjs:nodejs /app/prisma ./prisma
+COPY --from=builder --chown=nextjs:nodejs /app/prisma.config.js ./prisma.config.js
+
+# Salin paket prisma (jangan copy .bin/prisma karena Docker resolve symlinknya)
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/prisma ./node_modules/prisma
+COPY --from=builder --chown=nextjs:nodejs /app/node_modules/@prisma ./node_modules/@prisma
+
+# Buat ulang symlink .bin/prisma agar `npx prisma` berfungsi
+# Perlu USER root sementara karena chmod & symlink di direktori root container
+USER root
+RUN mkdir -p ./node_modules/.bin && \
+    ln -sf /app/node_modules/prisma/build/index.js ./node_modules/.bin/prisma && \
+    chmod +x /app/node_modules/prisma/build/index.js && \
+    chown -R nextjs:nodejs ./node_modules
+USER nextjs
+
 USER nextjs
 
 EXPOSE 3000

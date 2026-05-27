@@ -1,12 +1,23 @@
 // Script seed database Nusantara Trails
 // Menginisialisasi: 1 superadmin, 1 penyedia demo, 8 destinasi, dan 2 paket wisata sample
 const { PrismaClient } = require('@prisma/client')
+const { PrismaMariaDb } = require('@prisma/adapter-mariadb')
 const bcrypt = require('bcryptjs')
 
-// Prisma 7: URL koneksi diteruskan ke constructor
-const prisma = new PrismaClient({
-  datasourceUrl: process.env.DATABASE_URL,
-})
+// Prisma 7 wajib pakai driver adapter — parse URL ke config object
+function parseDbUrl(url) {
+  const parsed = new URL(url)
+  return {
+    host: parsed.hostname,
+    port: parseInt(parsed.port) || 3306,
+    user: decodeURIComponent(parsed.username),
+    password: decodeURIComponent(parsed.password),
+    database: parsed.pathname.replace(/^\//, ''),
+  }
+}
+
+const adapter = new PrismaMariaDb(parseDbUrl(process.env.DATABASE_URL))
+const prisma = new PrismaClient({ adapter })
 
 async function main() {
   console.log('🌱 Mulai proses seeding...')
